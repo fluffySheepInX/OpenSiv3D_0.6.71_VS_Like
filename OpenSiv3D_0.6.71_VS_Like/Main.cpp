@@ -29,7 +29,7 @@ enum GameMode {
 	Exit
 };
 
-// 弾の情報を表す構造体
+/// @brief 弾情報クラス
 struct Bullet
 {
 	/// @brief 中心座標
@@ -50,6 +50,9 @@ struct Bullet
 	/// @brief ダメージ量
 	int32 damage;
 
+	/// @brief 弾生存フラグ
+	bool isAlive = true;
+
 	/// @brief 弾の Circle を返す関数
 	/// @return Circle
 	Circle getCircle() const
@@ -61,6 +64,27 @@ struct Bullet
 	void draw() const
 	{
 		getCircle().draw(color);
+	}
+};
+/// @brief 敵クラス
+struct Enemy
+{
+	/// @brief 体力
+	int HP = 0;
+	/// @brief 生存しているかどうか
+	bool isAlive = true;
+	/// @brief 幅
+	double width = 0;
+	/// @brief 高さ
+	double height = 0;
+	/// @brief 早さ（ピクセル毎秒）
+	double speed;
+
+	Vec2 pos;
+
+	RectF getRect()
+	{
+		return RectF{ Arg::center(pos.x, pos.y), width, height };
 	}
 };
 
@@ -256,7 +280,7 @@ public:
 				font(textBackMenu).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
 			}
 
-			if (SimpleGUI::SliderAt(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) + (rectRegionTextBGM.w / 2), height+ rectRegionTextBGM.h/2 }))
+			if (SimpleGUI::SliderAt(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) + (rectRegionTextBGM.w / 2), height + rectRegionTextBGM.h / 2 }))
 			{
 				// 音量を設定
 				audio.setVolume(bgmValue);
@@ -276,6 +300,7 @@ public:
 		const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
 		// 絵文字からテクスチャを作成する | Create a texture from an emoji
 		const Texture texturePlayer{ U"🦖"_emoji };
+		const Texture textureEnemy{ U"🦖"_emoji };
 		//texturePlayer.resized(PlayerWidth);
 		// マップ画像を使用する為のTexture宣言
 		const Texture textureMap{ PathImage + U"/map.png", TextureDesc::Mipped };
@@ -290,9 +315,17 @@ public:
 		Vec2 playerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		Vec2 centerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		Array<Bullet> bullets;
+		Array<Enemy> enemies;
 
+		int counter = -1;
 		while (System::Update())
 		{
+			if (counter > 600)
+			{
+				counter = 0;
+			}
+			counter++;
+
 			const ScopedRenderStates2D sampler{ SamplerState::RepeatLinear };
 
 			//draw
@@ -301,12 +334,24 @@ public:
 				DrawMap(playerPos, textureMap, font);
 
 				// プレイヤーを描く | Draw the player
-				DrawPlayer(texturePlayer, isPlayerFacingRight);
+				DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
 
 				// 弾を描画する
 				DrawBullets(bullets);
 				// 弾情報を更新する
 				UpdateBullets(bullets, Scene::DeltaTime());
+
+				if (counter == 300 || counter == 0)
+				{
+					// 敵情報を生成する
+					CreateEnemy(enemies);
+				}
+				// 敵を描画する
+				DrawEnemy(textureEnemy, enemies);
+				// 敵情報を更新する
+				UpdateEnemies(enemies, Scene::DeltaTime(), playerPos);
+
+				CheckPlayerBulletEnemyCollision(bullets, enemies);
 			}
 
 			{
@@ -424,7 +469,7 @@ private:
 				DrawMap(playerPos, textureMap, font);
 
 				// プレイヤーを描く | Draw the player
-				DrawPlayer(texturePlayer, isPlayerFacingRight);
+				DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
 			}
 
 			{
@@ -480,6 +525,31 @@ private:
 				return (not b.getCircle().intersects(Scene::Rect()));
 			});
 	}
+
+	void UpdateEnemies(Array<Enemy>& enemies, double deltaTime, Vec2 playerPos)
+	{
+		for (auto& enemy : enemies)
+		{
+			Vec2 direction = (playerPos - enemy.pos).normalized();
+			enemy.pos += (direction * enemy.speed * deltaTime);
+		}
+
+		// 死んだ敵を削除
+		enemies.remove_if([](const Enemy& e)
+			{
+				return (e.isAlive == false);
+			});
+	}
+	void CreateEnemy(Array<Enemy>& enemies)
+	{
+		Enemy enemy;
+		enemy.HP = 10;
+		enemy.speed = 10;
+		enemy.height = 50;
+		enemy.width = 50;
+		enemy.pos = Vec2{ 30,30 };
+		enemies.push_back(enemy);
+	}
 	// Fires the bullet towards the mouse position
 	void FireBullet(Vec2 playerPos, Vec2 mousePos, Array<Bullet>& bullets)
 	{
@@ -531,13 +601,47 @@ private:
 	/// @brief プレイヤーを描画します
 	/// @param playerTexture 自機画像
 	/// @param isPlayerFacingRight 自機向きのフラグ
-	void DrawPlayer(Texture playerTexture, bool isPlayerFacingRight)
+	void DrawPlayer(Texture playerTexture, bool isPlayerFacingRight, Vec2 playerPos)
 	{
 		playerTexture
 			.scaled(1)
 			.mirrored(isPlayerFacingRight)
 			.draw((WindowSizeWidth / 2) - PlayerWidth, (WindowSizeHeight / 2) - PlayerHeight);
 	}
+	/// @brief 敵を描画します
+	/// @param enemyTexture 敵画像
+	void DrawEnemy(Texture enemyTexture, Array<Enemy>& enemies)
+	{
+		for (auto& enemy : enemies)
+		{
+			enemyTexture
+				.scaled(0.5)
+				.drawAt(enemy.pos);
+		}
+	}
+
+	/// @brief プレイヤーの弾と敵の当たり判定を行います
+	/// @param bullets 弾の配列
+	/// @param enemies 敵の配列
+	void CheckPlayerBulletEnemyCollision(Array<Bullet>& bullets, Array<Enemy>& enemies)
+	{
+		for (auto& bullet : bullets)
+		{
+			for (auto& enemy : enemies)
+			{
+				if (bullet.getCircle().intersects(enemy.getRect()))
+				{
+					enemy.HP -= bullet.damage;
+					bullet.isAlive = false;
+					if (enemy.HP <= 0)
+					{
+						enemy.isAlive = false;
+					}
+				}
+			}
+		}
+	}
+
 };
 
 
