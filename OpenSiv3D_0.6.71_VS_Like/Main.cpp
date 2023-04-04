@@ -68,6 +68,7 @@ class WindowManager {
 
 public:
 	Language language = Language::English;
+	double bgmValue = 5.0;
 
 public:
 	GameMode ShowSelectLangWindow()
@@ -212,21 +213,21 @@ public:
 
 		return ga;
 	}
-	GameMode ShowOption()
+	GameMode ShowOption(Audio& audio)
 	{
 		const Font font{ 40 };
 
-		String text = U"";
+		String textBGM = U"";
 		String textBackMenu = U"";
 
 		switch (language)
 		{
 		case English:
-			text += U"BGM volume";
+			textBGM += U"BGM volume";
 			textBackMenu += U"Back to menu";
 			break;
 		case Japan:
-			text += U"BGM音量";
+			textBGM += U"BGM音量";
 			textBackMenu += U"メニューへ戻る";
 			break;
 		case C:
@@ -237,23 +238,28 @@ public:
 
 		int height = 100;
 		int height2 = 200;
-		double bgmValue = 5.0;
-		RectF rectText = font(text).region();
+		RectF rectRegionTextBGM = font(textBGM).region();
+		RectF rectTextBGM = { (WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height,rectRegionTextBGM.w,60 };
 
-		RectF rect = { (WindowSizeWidth / 2) - (rectText.w / 2) - 150, height,rectText.w,60 };
 		RectF rectText2 = font(textBackMenu).region();
 		RectF rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), height2,rectText2.w,60 };
+
 		GameMode ga = Game;
+
 		while (System::Update())
 		{
 			//draw
 			{
 				//rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(text).draw((WindowSizeWidth / 2) - (rectText.w / 2) - 150, height, ColorF{ 0.25 });
-				SimpleGUI::Slider(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) - (rectText.w / 2) + 150, height });
+				font(textBGM).draw((WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height, ColorF{ 0.25 });
 				rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
 				font(textBackMenu).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
+			}
 
+			if (SimpleGUI::SliderAt(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) + (rectRegionTextBGM.w / 2), height+ rectRegionTextBGM.h/2 }))
+			{
+				// 音量を設定
+				audio.setVolume(bgmValue);
 			}
 
 			if (rect2.leftClicked())
@@ -468,10 +474,10 @@ private:
 			bullet.pos += (bullet.direction * bullet.speed * deltaTime);
 		}
 
-		// 画面外の弾を削除（方法 1）
+		// 画面外の弾を削除
 		bullets.remove_if([](const Bullet& b)
 			{
-					return (not b.getCircle().intersects(Scene::Rect()));
+				return (not b.getCircle().intersects(Scene::Rect()));
 			});
 	}
 	// Fires the bullet towards the mouse position
@@ -486,7 +492,8 @@ private:
 		bullet.damage = 10;
 		bullets.push_back(bullet);
 	}
-	// 弾を描画する関数
+	/// @brief 弾を描画します
+	/// @param bullets 弾の配列
 	void DrawBullets(Array<Bullet>& bullets)
 	{
 		for (const auto& bullet : bullets)
@@ -494,7 +501,10 @@ private:
 			bullet.draw();
 		}
 	}
-	// マップを描画する
+	/// @brief マップを描画します
+	/// @param playerPos 自機の位置
+	/// @param mapTexture マップ画像
+	/// @param font フォント
 	void DrawMap(Vec2 playerPos, Texture mapTexture, Font font)
 	{
 		// 差分を計算する
@@ -518,7 +528,9 @@ private:
 		// マップを描画する
 		mapTexture.draw(mapPos);
 	}
-	// プレイヤーを描画する
+	/// @brief プレイヤーを描画します
+	/// @param playerTexture 自機画像
+	/// @param isPlayerFacingRight 自機向きのフラグ
 	void DrawPlayer(Texture playerTexture, bool isPlayerFacingRight)
 	{
 		playerTexture
@@ -535,7 +547,7 @@ void Main()
 	// 音声ファイルを読み込み
 	String lan = PathMusic + U"/PreparationBattle001.wav";
 	// Audio を作成
-	const Audio audio{ lan };
+	Audio audio{ lan };
 	// 再生
 	audio.play();
 
@@ -566,7 +578,7 @@ void Main()
 			break;
 		case Option:
 			// オプション画面
-			ga = windowManager->ShowOption();
+			ga = windowManager->ShowOption(audio);
 			break;
 		case Exit:
 			// 終了
