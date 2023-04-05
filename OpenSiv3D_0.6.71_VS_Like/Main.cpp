@@ -316,7 +316,7 @@ public:
 		Vec2 centerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		Array<Bullet> bullets;
 		Array<Enemy> enemies;
-
+		Camera2D camera{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
 		int counter = -1;
 		while (System::Update())
 		{
@@ -326,6 +326,8 @@ public:
 			}
 			counter++;
 
+			camera.update();
+			const auto t = camera.createTransformer();
 			const ScopedRenderStates2D sampler{ SamplerState::RepeatLinear };
 
 			//draw
@@ -339,7 +341,7 @@ public:
 				// 弾を描画する
 				DrawBullets(bullets);
 				// 弾情報を更新する
-				UpdateBullets(bullets, Scene::DeltaTime());
+				UpdateBullets(bullets, Scene::DeltaTime(), playerPos, camera);
 
 				if (counter == 300 || counter == 0)
 				{
@@ -359,7 +361,7 @@ public:
 				if (KeyA.pressed())
 				{
 					// プレイヤーが左に移動する | Player moves left
-					playerPos.x = (playerPos.x + speed * Scene::DeltaTime());
+					playerPos.x = (playerPos.x - speed * Scene::DeltaTime());
 					isPlayerFacingRight = false;
 				}
 
@@ -367,14 +369,14 @@ public:
 				if (KeyS.pressed())
 				{
 					// プレイヤーが下に移動する | Player moves bottom
-					playerPos.y = (playerPos.y - speed * Scene::DeltaTime());
+					playerPos.y = (playerPos.y + speed * Scene::DeltaTime());
 				}
 
 				// Dキーが押されていたら | If D key is pressed
 				if (KeyD.pressed())
 				{
 					// プレイヤーが右に移動する | Player moves right
-					playerPos.x = (playerPos.x - speed * Scene::DeltaTime());
+					playerPos.x = (playerPos.x + speed * Scene::DeltaTime());
 					isPlayerFacingRight = true;
 				}
 
@@ -382,148 +384,51 @@ public:
 				if (KeyW.pressed())
 				{
 					// プレイヤーが上に移動する | Player moves up
-					playerPos.y = (playerPos.y + speed * Scene::DeltaTime());
+					playerPos.y = (playerPos.y - speed * Scene::DeltaTime());
 				}
 
+				camera.jumpTo(playerPos, 1.0);
+
 				// マウスの左ボタンが押されていたら
-				if (MouseL.pressed())
+				if (MouseL.pressed())//downに後でする
 				{
 					// マウスの位置を取得する | Gets the mouse position
 					Vec2 mousePos = Cursor::Pos();
 
 					// マウスの位置に向かって弾を発射する// Fires the bullet towards the mouse position
-					FireBullet(centerPos, mousePos, bullets);
+					FireBullet(playerPos, mousePos, bullets);
 				}
 			}
 		}
 		return Menu;
 	}
 private:
-	void ShowConfigWindowTest()
-	{
-		// ウィンドウのタイトル | Window title
-		Window::SetTitle(U"TestGame-Ver0.1");
-		// ウィンドウのサイズ | Window size
-		Window::Resize(1200, 800);
-		//// フルスクリーンモードのデフォルトを有効にするか | Whether to enable fullscreen mode by default
-		//Window::SetFullscreen(true);
-		// 背景の色を設定する | Set the background color
-		Scene::SetBackground(ColorF{ 0.6, 0.8, 0.7 });
-		// フレームレートの上限を設定する | Set the frame rate limit
-
-		// ウィンドウを中心に移動
-		Window::Centering();
-		//ウィンドウを手動でリサイズできるようにする
-		Window::SetStyle(WindowStyle::Sizable);
-		//仮想ウィンドウサイズが新しいシーンのサイズになります
-		Scene::SetResizeMode(ResizeMode::Virtual);
-
-		// 画像を使用する為のTexture宣言
-		const Texture textureSiv3DKun{ U"example/siv3d-kun.png", TextureDesc::Mipped };
-
-		// 
-		const int pointOneX = 500;
-		const int pointOneY = 60;
-		const Polygon hexagonOne = Shape2D::Hexagon(60, Vec2{ pointOneX, pointOneY });
-		const Vec2 offsetOne = Vec2(pointOneX, pointOneY);
-
-		while (System::Update())
-		{
-			{
-				// Polygon に対し、(35, 180) を画像の中心とするようにテクスチャを貼り付けて描画
-				hexagonOne.draw(HSV{ 240, 0.5, 1.0 });
-				hexagonOne.toBuffer2D(Arg::center = (Vec2{ 35, 180 } + offsetOne), textureSiv3DKun.size())
-					.draw(textureSiv3DKun);
-			}
-
-			//hexagonが押されたら次の画面へ進む
-			if (hexagonOne.leftClicked())
-			{
-				break;
-			}
-		}
-	}
-	GameMode PlayGameTest()
-	{
-		const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
-		// 絵文字からテクスチャを作成する | Create a texture from an emoji
-		const Texture texturePlayer{ U"🦖"_emoji };
-		//texturePlayer.resized(PlayerWidth);
-		// マップ画像を使用する為のTexture宣言
-		const Texture textureMap{ PathImage + U"/map.png", TextureDesc::Mipped };
-		mapWidth = textureMap.width();
-		mapHeight = textureMap.height();
-		//textureMap.resized(mapWidth);
-		// プレイヤーの移動スピード | Player's movement speed
-		double speed = 600.0;
-		// プレイヤーが右を向いているか | Whether player is facing right
-		bool isPlayerFacingRight = true;
-		// プレイヤーの位置
-		Vec2 playerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
-
-		while (System::Update())
-		{
-			//draw
-			{
-				// マップを描く | Draw the map
-				DrawMap(playerPos, textureMap, font);
-
-				// プレイヤーを描く | Draw the player
-				DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
-			}
-
-			{
-				// Aキーが押されていたら | If A key is pressed
-				if (KeyA.pressed())
-				{
-					// プレイヤーが左に移動する | Player moves left
-					playerPos.x = Max((playerPos.x - speed * Scene::DeltaTime()), WindowSizeWidth / 2 - (mapWidth / 2));
-					isPlayerFacingRight = false;
-				}
-
-				// Sキーが押されていたら | If S key is pressed
-				if (KeyS.pressed())
-				{
-					// プレイヤーが下に移動する | Player moves bottom
-					playerPos.y = Min((playerPos.y + speed * Scene::DeltaTime()), (WindowSizeHeight / 2) + (mapHeight / 2));
-					isPlayerFacingRight = true;
-				}
-
-				// Dキーが押されていたら | If D key is pressed
-				if (KeyD.pressed())
-				{
-					// プレイヤーが右に移動する | Player moves right
-					playerPos.x = Min((playerPos.x + speed * Scene::DeltaTime()), (WindowSizeWidth / 2) + (mapWidth / 2));
-					isPlayerFacingRight = true;
-				}
-
-				// Wキーが押されていたら | If W key is pressed
-				if (KeyW.pressed())
-				{
-					// プレイヤーが上に移動する | Player moves up
-					playerPos.y = Max((playerPos.y - speed * Scene::DeltaTime()), (WindowSizeHeight / 2) - (mapHeight / 2));
-					isPlayerFacingRight = true;
-				}
-			}
-		}
-		return Menu;
-	}
-
 	/// @brief 弾の移動と削除を行います。
-	/// @param bullets 弾の配列
-	/// @param deltaTime 経過時間
-	void UpdateBullets(Array<Bullet>& bullets, double deltaTime)
+	/// @param bullets 
+	/// @param deltaTime 
+	/// @param playerPos 
+	/// @param camera 
+	void UpdateBullets(Array<Bullet>& bullets, double deltaTime, Vec2 playerPos, const Camera2D& camera)
 	{
 		for (auto& bullet : bullets)
 		{
 			bullet.pos += (bullet.direction * bullet.speed * deltaTime);
 		}
 
-		// 画面外の弾を削除
-		bullets.remove_if([](const Bullet& b)
-			{
-				return (not b.getCircle().intersects(Scene::Rect()));
-			});
+		//// 画面外の弾を削除
+		//bullets.remove_if([playerPos](const Bullet& b)
+		//	{
+		//		return (not b.getCircle().intersects(Scene::Rect().setPos(playerPos.x, playerPos.y)));
+		//	});
+
+		// カメラのビューポートを取得する
+		const auto viewportRect = camera.getRegion();
+
+		// ビューポート外の弾を削除する
+		bullets.remove_if([&](const Bullet& bullet)
+		{
+			return !viewportRect.intersects(bullet.getCircle());
+		});
 	}
 
 	void UpdateEnemies(Array<Enemy>& enemies, double deltaTime, Vec2 playerPos)
@@ -584,19 +489,9 @@ private:
 		// マップの左上の位置を計算する
 		Vec2 mapPos = Vec2(-x + (-(mapWidth / 2) + WindowSizeWidth / 2), -y + (-(mapHeight / 2) + WindowSizeHeight / 2));
 
-		mapTexture(mapPos.x, mapPos.y, mapWidth, mapHeight).draw();
-	}
-	void DrawMapTest(Vec2 playerPos, Texture mapTexture, Font font)
-	{
-		// 差分を計算する
-		double x = playerPos.x - WindowSizeWidth / 2;
-		double y = playerPos.y - WindowSizeHeight / 2;
-
-		// マップの左上の位置を計算する
-		Vec2 mapPos = Vec2(-x + (-(mapWidth / 2) + WindowSizeWidth / 2), -y + (-(mapHeight / 2) + WindowSizeHeight / 2));
-
-		// マップを描画する
-		mapTexture.draw(mapPos);
+		//mapTexture(WindowSizeWidth / 2, WindowSizeHeight / 2, mapWidth, mapHeight).draw();
+		//mapTexture(WindowSizeWidth/2, WindowSizeHeight/2, mapWidth, mapHeight).draw();
+		mapTexture.repeated(256, 256).drawAt(0, 0);
 	}
 	/// @brief プレイヤーを描画します
 	/// @param playerTexture 自機画像
@@ -606,7 +501,7 @@ private:
 		playerTexture
 			.scaled(1)
 			.mirrored(isPlayerFacingRight)
-			.draw((WindowSizeWidth / 2) - PlayerWidth, (WindowSizeHeight / 2) - PlayerHeight);
+			.draw(playerPos.x - PlayerWidth / 2, playerPos.y - PlayerHeight / 2);
 	}
 	/// @brief 敵を描画します
 	/// @param enemyTexture 敵画像
@@ -619,7 +514,6 @@ private:
 				.drawAt(enemy.pos);
 		}
 	}
-
 	/// @brief プレイヤーの弾と敵の当たり判定を行います
 	/// @param bullets 弾の配列
 	/// @param enemies 敵の配列
@@ -649,7 +543,8 @@ private:
 void Main()
 {
 	// 音声ファイルを読み込み
-	String lan = PathMusic + U"/PreparationBattle001.wav";
+	//String lan = PathMusic + U"/PreparationBattle001.wav";
+	String lan = U"";
 	// Audio を作成
 	Audio audio{ lan };
 	// 再生
