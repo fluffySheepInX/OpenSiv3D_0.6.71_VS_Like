@@ -1,34 +1,10 @@
 ﻿# include <Siv3D.hpp> // OpenSiv3D v0.6.7
 
-// ウィンドウの幅
-const double WindowSizeWidth = 1200;
-// ウィンドウの高さ
-const double WindowSizeHeight = 800;
-// マップの幅
-int mapWidth = -1;
-// マップの高さ
-int mapHeight = -1;
-// プレイヤーのサイズ(幅)
-const int PlayerWidth = 50;
-// プレイヤーのサイズ(高さ)
-const int PlayerHeight = 50;
-const String PathImage = U"image001";
-const String PathMusic = U"music001";
-const String PathSound = U"sound001";
-
 enum Language {
 	English,
 	Japan,
 	C
 };
-enum GameMode {
-	Game,
-	Menu,
-	Lan,
-	Option,
-	Exit
-};
-
 /// @brief 弾情報クラス
 struct Bullet
 {
@@ -87,84 +63,107 @@ struct Enemy
 		return RectF{ Arg::center(pos.x, pos.y), width, height };
 	}
 };
+// 共有するデータ
+struct GameData
+{
+	Audio audio;
+};
 
-class WindowManager {
+using App = SceneManager<String, GameData>;
 
+// ウィンドウの幅
+const double WindowSizeWidth = 1200;
+// ウィンドウの高さ
+const double WindowSizeHeight = 800;
+// マップの幅
+int mapWidth = -1;
+// マップの高さ
+int mapHeight = -1;
+// プレイヤーのサイズ(幅)
+const int PlayerWidth = 50;
+// プレイヤーのサイズ(高さ)
+const int PlayerHeight = 50;
+const String PathImage = U"image001";
+const String PathMusic = U"music001";
+const String PathSound = U"sound001";
+
+double bgmValue = 5.0;
+Language language;
+
+
+// 言語選択シーン
+class SelectLang : public App::Scene
+{
 public:
-	Language language = Language::English;
-	double bgmValue = 5.0;
-
-public:
-	GameMode ShowSelectLangWindow()
+	// コンストラクタ（必ず実装）
+	SelectLang(const InitData& init)
+		: IScene{ init }
 	{
-		// ウィンドウのタイトル | Window title
-		Window::SetTitle(U"MagicAr-Ver0.1");
-		// ウィンドウのサイズ | Window size
-		Window::Resize(WindowSizeWidth, WindowSizeHeight);
-		//// フルスクリーンモードのデフォルトを有効にするか | Whether to enable fullscreen mode by default
-		//Window::SetFullscreen(true);
-		// 背景の色を設定する | Set the background color
-		Scene::SetBackground(ColorF{ 0.6, 0.8, 0.7 });
-		// フレームレートの上限を設定する | Set the frame rate limit
-
-		// ウィンドウを中心に移動
-		Window::Centering();
-		//ウィンドウを手動でリサイズできるようにする
-		Window::SetStyle(WindowStyle::Sizable);
-		//仮想ウィンドウサイズが新しいシーンのサイズになります
-		Scene::SetResizeMode(ResizeMode::Virtual);
+		language = Language::English;
 
 		// 画像を使用する為のTexture宣言
 		String lan = PathImage + U"/btnLanguage.png";
-		const Texture textureSiv3DKun{ lan, TextureDesc::Unmipped };
-		const int width = 270;
-		const int height = 100;
-		const int centerHeight = (WindowSizeHeight / 2) - (height / 2);
-		const int centerWidth = (WindowSizeWidth / 2) - (width / 2);
-		//第1引数x座標,第2引数y座標,第3引数幅,第4引数高さ
-		const Rect rectSiv3DKun{ centerWidth , centerHeight - 300,width,height };
-		// フォントを作成
-		const Font font{ 40 };
-		// font を使って text を pos の位置に描画したときのテキストの領域を取得
+		textureSiv3DKun = Texture{ lan, TextureDesc::Unmipped };
 		String text = U"English";
 		String text2 = U"日本語";
-		RectF rectText = font(text).region();
-		RectF rectText2 = font(text2).region();
-		RectF rect = { (WindowSizeWidth / 2) - (rectText.w / 2), 300,rectText.w,60 };
-		RectF rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), 370,rectText2.w,60 };
-
-		while (System::Update())
-		{
-			//draw群
-			{
-				rectSiv3DKun(textureSiv3DKun).draw();
-				rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(U"English").draw((WindowSizeWidth / 2) - (rectText.w / 2), 300, ColorF{ 0.25 });
-				font(U"日本語").draw((WindowSizeWidth / 2) - (rectText2.w / 2), 370, ColorF{ 0.25 });
-			}
-
-			//押されたら次の画面へ進む
-			if (rect.leftClicked())
-			{
-				language = English;
-				break;
-			}
-			if (rect2.leftClicked())
-			{
-				language = Japan;
-				break;
-			}
-		}
-		return Menu;
+		// font を使って text を pos の位置に描画したときのテキストの領域を取得
+		rectText = font(text).region();
+		rectText2 = font(text2).region();
+		rect = { (WindowSizeWidth / 2) - (rectText.w / 2), 300,rectText.w,60 };
+		rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), 370,rectText2.w,60 };
 	}
-	GameMode ShowMenu()
+
+	// 更新関数（オプション）
+	void update() override
 	{
-		const Font font{ 40 };
-		String text = U"";
-		String textSelectLang = U"";
-		String textOption = U"";
-		String textExit = U"";
+		//押されたら次の画面へ進む
+		if (rect.leftClicked())
+		{
+			language = English;
+			// 遷移
+			changeScene(U"Title", 0.3s);
+		}
+		if (rect2.leftClicked())
+		{
+			language = Japan;
+			// 遷移
+			changeScene(U"Title", 0.3s);
+		}
+	}
+
+	// 描画関数（オプション）
+	void draw() const override
+	{
+		rectSiv3DKun(textureSiv3DKun).draw();
+		rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(U"English").draw((WindowSizeWidth / 2) - (rectText.w / 2), 300, ColorF{ 0.25 });
+		font(U"日本語").draw((WindowSizeWidth / 2) - (rectText2.w / 2), 370, ColorF{ 0.25 });
+	}
+private:
+	Texture textureSiv3DKun;
+	const int width = 270;
+	const int height = 100;
+	const int centerHeight = (WindowSizeHeight / 2) - (height / 2);
+	const int centerWidth = (WindowSizeWidth / 2) - (width / 2);
+	//第1引数x座標,第2引数y座標,第3引数幅,第4引数高さ
+	const Rect rectSiv3DKun{ centerWidth , centerHeight - 300,width,height };
+	// フォントを作成
+	const Font font{ 40 };
+	RectF rectText;
+	RectF rectText2;
+	RectF rect;
+	RectF rect2;
+};
+// タイトルシーン
+class Title : public App::Scene
+{
+public:
+
+	// コンストラクタ（必ず実装）
+	Title(const InitData& init)
+		: IScene{ init }
+	{
 		switch (language)
 		{
 		case English:
@@ -184,66 +183,82 @@ public:
 		default:
 			break;
 		}
-		int height = 100;
-		int height2 = 200;
-		int height3 = 300;
-		int height4 = 400;
-		RectF rectText = font(text).region();
-		RectF rect = { (WindowSizeWidth / 2) - (rectText.w / 2), height,rectText.w,60 };
-		RectF rectText2 = font(textSelectLang).region();
-		RectF rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), height2,rectText2.w,60 };
-		RectF rectText3 = font(textOption).region();
-		RectF rect3 = { (WindowSizeWidth / 2) - (rectText3.w / 2), height3,rectText3.w,60 };
-		RectF rectText4 = font(textExit).region();
-		RectF rect4 = { (WindowSizeWidth / 2) - (rectText4.w / 2), height4,rectText4.w,60 };
 
-		GameMode ga = Game;
-		while (System::Update())
-		{
-			//draw
-			{
-				rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(text).draw((WindowSizeWidth / 2) - (rectText.w / 2), height, ColorF{ 0.25 });
-				rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(textSelectLang).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
-				rect3.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(textOption).draw((WindowSizeWidth / 2) - (rectText3.w / 2), height3, ColorF{ 0.25 });
-				rect4.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(textExit).draw((WindowSizeWidth / 2) - (rectText4.w / 2), height4, ColorF{ 0.25 });
-			}
-
-			//押されたら画面遷移
-			if (rect.leftClicked())
-			{
-				ga = Game;
-				break;
-			}
-			if (rect2.leftClicked())
-			{
-				ga = Lan;
-				break;
-			}
-			if (rect3.leftClicked())
-			{
-				ga = Option;
-				break;
-			}
-			if (rect4.leftClicked())
-			{
-				ga = Exit;
-				break;
-			}
-		}
-
-		return ga;
+		rectText = font(text).region();
+		rect = { (WindowSizeWidth / 2) - (rectText.w / 2), height,rectText.w,60 };
+		rectText2 = font(textSelectLang).region();
+		rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), height2,rectText2.w,60 };
+		rectText3 = font(textOption).region();
+		rect3 = { (WindowSizeWidth / 2) - (rectText3.w / 2), height3,rectText3.w,60 };
+		rectText4 = font(textExit).region();
+		rect4 = { (WindowSizeWidth / 2) - (rectText4.w / 2), height4,rectText4.w,60 };
 	}
-	GameMode ShowOption(Audio& audio)
+
+	// 更新関数（オプション）
+	void update() override
 	{
-		const Font font{ 40 };
+		//押されたら画面遷移
+		if (rect.leftClicked())
+		{
+			// 遷移
+			changeScene(U"PlayGame", 0.3s);
+		}
+		if (rect2.leftClicked())
+		{
+			// 遷移
+			changeScene(U"SelectLang", 0.3s);
+		}
+		if (rect3.leftClicked())
+		{
+			// 遷移
+			changeScene(U"Option", 0.3s);
+		}
+		if (rect4.leftClicked())
+		{
+			// ゲーム終了
+			System::Exit();
+		}
+	}
 
-		String textBGM = U"";
-		String textBackMenu = U"";
-
+	// 描画関数（オプション）
+	void draw() const override
+	{
+		rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(text).draw((WindowSizeWidth / 2) - (rectText.w / 2), height, ColorF{ 0.25 });
+		rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(textSelectLang).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
+		rect3.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(textOption).draw((WindowSizeWidth / 2) - (rectText3.w / 2), height3, ColorF{ 0.25 });
+		rect4.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(textExit).draw((WindowSizeWidth / 2) - (rectText4.w / 2), height4, ColorF{ 0.25 });
+	}
+private:
+	const Font font{ 40 };
+	String text = U"";
+	String textSelectLang = U"";
+	String textOption = U"";
+	String textExit = U"";
+	int height = 100;
+	int height2 = 200;
+	int height3 = 300;
+	int height4 = 400;
+	RectF rectText;
+	RectF rect;
+	RectF rectText2;
+	RectF rect2;
+	RectF rectText3;
+	RectF rect3;
+	RectF rectText4;
+	RectF rect4;
+};
+// オプションシーン
+class Option : public App::Scene
+{
+public:
+	// コンストラクタ（必ず実装）
+	Option(const InitData& init)
+		: IScene{ init }
+	{
 		switch (language)
 		{
 		case English:
@@ -260,73 +275,69 @@ public:
 			break;
 		}
 
-		int height = 100;
-		int height2 = 200;
-		RectF rectRegionTextBGM = font(textBGM).region();
-		RectF rectTextBGM = { (WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height,rectRegionTextBGM.w,60 };
-
-		RectF rectText2 = font(textBackMenu).region();
-		RectF rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), height2,rectText2.w,60 };
-
-		GameMode ga = Game;
-
-		while (System::Update())
-		{
-			//draw
-			{
-				//rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(textBGM).draw((WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height, ColorF{ 0.25 });
-				rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
-				font(textBackMenu).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
-			}
-
-			if (SimpleGUI::SliderAt(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) + (rectRegionTextBGM.w / 2), height + rectRegionTextBGM.h / 2 }))
-			{
-				// 音量を設定
-				audio.setVolume(bgmValue);
-			}
-
-			if (rect2.leftClicked())
-			{
-				ga = Menu;
-				break;
-			}
-
-		}
-		return ga;
+		rectRegionTextBGM = font(textBGM).region();
+		rectTextBGM = { (WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height,rectRegionTextBGM.w,60 };
+		rectText2 = font(textBackMenu).region();
+		rect2 = { (WindowSizeWidth / 2) - (rectText2.w / 2), height2,rectText2.w,60 };
 	}
-	GameMode PlayGame()
+
+	// 更新関数（オプション）
+	void update() override
 	{
-		const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
-		// 絵文字からテクスチャを作成する | Create a texture from an emoji
-		const Texture texturePlayer{ U"🦖"_emoji };
-		const Texture textureEnemy{ U"🦖"_emoji };
-		//texturePlayer.resized(PlayerWidth);
-		// マップ画像を使用する為のTexture宣言
-		const Texture textureMap{ PathImage + U"/map.png", TextureDesc::Mipped };
+		if (SimpleGUI::SliderAt(U"{:.2f}"_fmt(bgmValue), bgmValue, 0.0, 10.0, Vec2{ (WindowSizeWidth / 2) + (rectRegionTextBGM.w / 2), height + rectRegionTextBGM.h / 2 }))
+		{
+			// 音量を設定
+			getData().audio.setVolume(bgmValue);
+		}
+
+		if (rect2.leftClicked())
+		{
+			// 遷移
+			changeScene(U"Title", 0.3s);
+		}
+	}
+
+	// 描画関数（オプション）
+	void draw() const override
+	{
+		font(textBGM).draw((WindowSizeWidth / 2) - (rectRegionTextBGM.w / 2) - 150, height, ColorF{ 0.25 });
+		rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
+		font(textBackMenu).draw((WindowSizeWidth / 2) - (rectText2.w / 2), height2, ColorF{ 0.25 });
+	}
+private:
+	const Font font{ 40 };
+	String textBGM = U"";
+	String textBackMenu = U"";
+	int height = 100;
+	int height2 = 200;
+	RectF rectRegionTextBGM;
+	RectF rectTextBGM;
+	RectF rectText2;
+	RectF rect2;
+};
+class PlayGame : public App::Scene
+{
+public:
+
+	// コンストラクタ（必ず実装）
+	PlayGame(const InitData& init)
+		: IScene{ init }
+	{
 		mapWidth = textureMap.width();
 		mapHeight = textureMap.height();
-		//textureMap.resized(mapWidth);
-		// プレイヤーの移動スピード | Player's movement speed
-		double speed = 600.0;
-		// プレイヤーが右を向いているか | Whether player is facing right
-		bool isPlayerFacingRight = true;
-		// プレイヤーの位置
-		Vec2 playerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
-		Vec2 centerPos(WindowSizeWidth / 2, WindowSizeHeight / 2);
-		Array<Bullet> bullets;
-		Array<Enemy> enemies;
-		Camera2D camera{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
+		playerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
+		centerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
+		camera = Camera2D{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
+	}
 
-		// 選択肢
-		Array<int> options =
+	// 更新関数（オプション）
+	void update() override
+	{
+		if (counter > 600)
 		{
-			1,//U"$右",
-			2,//U"$左",
-			3,//U"$上",
-			4//U"$下",
-		};
-
+			counter = 0;
+		}
+		counter++;
 		// 選択肢に対応する確率分布
 		DiscreteDistribution distribution(
 		{
@@ -336,92 +347,101 @@ public:
 			50,
 		});
 
-		int counter = -1;
-		while (System::Update())
+		camera.update();
+		const auto t = camera.createTransformer();
+		const ScopedRenderStates2D sampler{ SamplerState::RepeatLinear };
+
+		// マップを描く | Draw the map
+		DrawMap(playerPos, textureMap, font);
+
+		// プレイヤーを描く | Draw the player
+		DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
+
+		// 弾を描画する
+		DrawBullets(bullets);
+		// 弾情報を更新する
+		UpdateBullets(bullets, Scene::DeltaTime(), playerPos, camera);
+
+		if (counter % 10 == 0 || counter == 0)
 		{
-			if (counter > 600)
-			{
-				counter = 0;
-			}
-			counter++;
-
-			camera.update();
-			const auto t = camera.createTransformer();
-			const ScopedRenderStates2D sampler{ SamplerState::RepeatLinear };
-
-			//draw
-			{
-				// マップを描く | Draw the map
-				DrawMap(playerPos, textureMap, font);
-
-				// プレイヤーを描く | Draw the player
-				DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
-
-				// 弾を描画する
-				DrawBullets(bullets);
-				// 弾情報を更新する
-				UpdateBullets(bullets, Scene::DeltaTime(), playerPos, camera);
-
-				if (counter % 10 == 0 || counter == 0)
-				{
-					// 敵情報を生成する
-					CreateEnemy(enemies, camera, options, distribution);
-				}
-				// 敵を描画する
-				DrawEnemy(textureEnemy, enemies);
-				// 敵情報を更新する
-				UpdateEnemies(enemies, Scene::DeltaTime(), playerPos);
-
-				CheckPlayerBulletEnemyCollision(bullets, enemies);
-			}
-
-			{
-				// Aキーが押されていたら | If A key is pressed
-				if (KeyA.pressed())
-				{
-					// プレイヤーが左に移動する | Player moves left
-					playerPos.x = (playerPos.x - speed * Scene::DeltaTime());
-					isPlayerFacingRight = false;
-				}
-
-				// Sキーが押されていたら | If S key is pressed
-				if (KeyS.pressed())
-				{
-					// プレイヤーが下に移動する | Player moves bottom
-					playerPos.y = (playerPos.y + speed * Scene::DeltaTime());
-				}
-
-				// Dキーが押されていたら | If D key is pressed
-				if (KeyD.pressed())
-				{
-					// プレイヤーが右に移動する | Player moves right
-					playerPos.x = (playerPos.x + speed * Scene::DeltaTime());
-					isPlayerFacingRight = true;
-				}
-
-				// Wキーが押されていたら | If W key is pressed
-				if (KeyW.pressed())
-				{
-					// プレイヤーが上に移動する | Player moves up
-					playerPos.y = (playerPos.y - speed * Scene::DeltaTime());
-				}
-
-				camera.jumpTo(playerPos, 1.0);
-
-				// マウスの左ボタンが押されていたら
-				if (MouseL.pressed())//downに後でする
-				{
-					// マウスの位置を取得する | Gets the mouse position
-					Vec2 mousePos = Cursor::Pos();
-
-					// マウスの位置に向かって弾を発射する// Fires the bullet towards the mouse position
-					FireCreateBullet(playerPos, mousePos, bullets);
-				}
-			}
+			// 敵情報を生成する
+			CreateEnemy(enemies, camera, options, distribution);
 		}
-		return Menu;
+		// 敵を描画する
+		DrawEnemy(textureEnemy, enemies);
+		// 敵情報を更新する
+		UpdateEnemies(enemies, Scene::DeltaTime(), playerPos);
+
+		CheckPlayerBulletEnemyCollision(bullets, enemies);
+
+		// Aキーが押されていたら | If A key is pressed
+		if (KeyA.pressed())
+		{
+			// プレイヤーが左に移動する | Player moves left
+			playerPos.x = (playerPos.x - speed * Scene::DeltaTime());
+			isPlayerFacingRight = false;
+		}
+
+		// Sキーが押されていたら | If S key is pressed
+		if (KeyS.pressed())
+		{
+			// プレイヤーが下に移動する | Player moves bottom
+			playerPos.y = (playerPos.y + speed * Scene::DeltaTime());
+		}
+
+		// Dキーが押されていたら | If D key is pressed
+		if (KeyD.pressed())
+		{
+			// プレイヤーが右に移動する | Player moves right
+			playerPos.x = (playerPos.x + speed * Scene::DeltaTime());
+			isPlayerFacingRight = true;
+		}
+
+		// Wキーが押されていたら | If W key is pressed
+		if (KeyW.pressed())
+		{
+			// プレイヤーが上に移動する | Player moves up
+			playerPos.y = (playerPos.y - speed * Scene::DeltaTime());
+		}
+
+		camera.jumpTo(playerPos, 1.0);
+
+		// マウスの左ボタンが押されていたら
+		if (MouseL.pressed())//downに後でする
+		{
+			// マウスの位置を取得する | Gets the mouse position
+			Vec2 mousePos = Cursor::Pos();
+
+			// マウスの位置に向かって弾を発射する// Fires the bullet towards the mouse position
+			FireCreateBullet(playerPos, mousePos, bullets);
+		}
+	}
+
+	// 描画関数（オプション）
+	void draw() const override
+	{
 	}
 private:
+	DiscreteDistribution distribution;
+	int counter = -1;
+	const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
+	// 絵文字からテクスチャを作成する | Create a texture from an emoji
+	const Texture texturePlayer{ U"🦖"_emoji };
+	const Texture textureEnemy{ U"🦖"_emoji };
+	//texturePlayer.resized(PlayerWidth);
+	// マップ画像を使用する為のTexture宣言
+	const Texture textureMap{ PathImage + U"/map.png", TextureDesc::Mipped };
+	// プレイヤーの移動スピード | Player's movement speed
+	double speed = 600.0;
+	// プレイヤーが右を向いているか | Whether player is facing right
+	bool isPlayerFacingRight = true;
+	// プレイヤーの位置
+	Vec2 playerPos;
+	Vec2 centerPos;
+	Array<Bullet> bullets;
+	Array<Enemy> enemies;
+	Camera2D camera;
+
 	/// @brief 弾の移動と削除を行います。
 	/// @param bullets 
 	/// @param deltaTime 
@@ -600,56 +620,61 @@ private:
 		}
 	}
 
-};
+	// 選択肢
+	Array<int> options =
+	{
+		1,//U"$右",
+		2,//U"$左",
+		3,//U"$上",
+		4//U"$下",
+	};
 
+};
 
 // メイン関数 | Main function
 void Main()
 {
-	// 音声ファイルを読み込み
-	String lan = PathMusic + U"/PreparationBattle001.wav";
+	// ウィンドウのタイトル | Window title
+	Window::SetTitle(U"KyoryuFire-Ver0.1");
+	// ウィンドウのサイズ | Window size
+	Window::Resize(WindowSizeWidth, WindowSizeHeight);
+	//// フルスクリーンモードのデフォルトを有効にするか | Whether to enable fullscreen mode by default
+	//Window::SetFullscreen(true);
+	// 背景の色を設定する | Set the background color
+	Scene::SetBackground(ColorF{ 0.6, 0.8, 0.7 });
+	// ウィンドウを中心に移動
+	Window::Centering();
+	//ウィンドウを手動でリサイズできるようにする
+	Window::SetStyle(WindowStyle::Sizable);
+	//仮想ウィンドウサイズが新しいシーンのサイズになります
+	Scene::SetResizeMode(ResizeMode::Virtual);
+
+	// シーンマネージャーを作成
+	// ここで GameData が初期化される
+	App manager;
+
+	// シーンを登録
+	manager.add<SelectLang>(U"SelectLang");
+	manager.add<Title>(U"Title");
+	manager.add<Option>(U"Option");
+	manager.add<PlayGame>(U"PlayGame");
+
+	// "SelectLang" シーンから開始
+	manager.init(U"SelectLang");
+
+	// 音声ファイルへのパスを読み込み
+	String bgm = PathMusic + U"/PreparationBattle001.wav";
 	//String lan = U"";
+
 	// Audio を作成
-	Audio audio{ lan ,Loop::Yes };
+	manager.get().get()->audio = Audio{ bgm ,Loop::Yes };
 	// 再生
-	audio.play();
+	manager.get().get()->audio.play();
 
-	// 画面管理クラスの宣言
-	std::shared_ptr<WindowManager> windowManager = std::make_shared<WindowManager>();
-	// 初期画面は言語選択画面
-	GameMode ga = windowManager->ShowSelectLangWindow();
-	// ループのフラグ
-	bool checkLoop = true;
-	// 初期画面の次はメニュー画面
-	ga = windowManager->ShowMenu();
-
-	while (checkLoop and System::Update())
+	while (System::Update())
 	{
-		switch (ga)
+		if (not manager.update())
 		{
-		case Game:
-			// ゲーム本編
-			ga = windowManager->PlayGame();
-			break;
-		case Menu:
-			// メニュー画面
-			ga = windowManager->ShowMenu();
-			break;
-		case Lan:
-			// 言語選択画面
-			ga = windowManager->ShowSelectLangWindow();
-			break;
-		case Option:
-			// オプション画面
-			ga = windowManager->ShowOption(audio);
-			break;
-		case Exit:
-			// 終了
-			checkLoop = false;
-			// BGM終了
-			audio.stop();
-			break;
-		default:
 			break;
 		}
 	}
