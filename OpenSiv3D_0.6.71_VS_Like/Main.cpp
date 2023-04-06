@@ -607,10 +607,10 @@ private:
 void Main()
 {
 	// 音声ファイルを読み込み
-	//String lan = PathMusic + U"/PreparationBattle001.wav";
-	String lan = U"";
+	String lan = PathMusic + U"/PreparationBattle001.wav";
+	//String lan = U"";
 	// Audio を作成
-	Audio audio{ lan };
+	Audio audio{ lan ,Loop::Yes };
 	// 再生
 	audio.play();
 
