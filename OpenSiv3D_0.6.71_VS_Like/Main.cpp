@@ -317,6 +317,25 @@ public:
 		Array<Bullet> bullets;
 		Array<Enemy> enemies;
 		Camera2D camera{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
+
+		// 選択肢
+		Array<int> options =
+		{
+			1,//U"$右",
+			2,//U"$左",
+			3,//U"$上",
+			4//U"$下",
+		};
+
+		// 選択肢に対応する確率分布
+		DiscreteDistribution distribution(
+		{
+			30,
+			30,
+			50,
+			50,
+		});
+
 		int counter = -1;
 		while (System::Update())
 		{
@@ -343,10 +362,10 @@ public:
 				// 弾情報を更新する
 				UpdateBullets(bullets, Scene::DeltaTime(), playerPos, camera);
 
-				if (counter == 300 || counter == 0)
+				if (counter % 10 == 0 || counter == 0)
 				{
 					// 敵情報を生成する
-					CreateEnemy(enemies);
+					CreateEnemy(enemies, camera, options, distribution);
 				}
 				// 敵を描画する
 				DrawEnemy(textureEnemy, enemies);
@@ -396,7 +415,7 @@ public:
 					Vec2 mousePos = Cursor::Pos();
 
 					// マウスの位置に向かって弾を発射する// Fires the bullet towards the mouse position
-					FireBullet(playerPos, mousePos, bullets);
+					FireCreateBullet(playerPos, mousePos, bullets);
 				}
 			}
 		}
@@ -430,7 +449,10 @@ private:
 			return !viewportRect.intersects(bullet.getCircle());
 		});
 	}
-
+	/// @brief 敵情報更新
+	/// @param enemies 
+	/// @param deltaTime 
+	/// @param playerPos 
 	void UpdateEnemies(Array<Enemy>& enemies, double deltaTime, Vec2 playerPos)
 	{
 		for (auto& enemy : enemies)
@@ -445,18 +467,60 @@ private:
 				return (e.isAlive == false);
 			});
 	}
-	void CreateEnemy(Array<Enemy>& enemies)
+	/// @brief 敵を生成する
+	/// @param enemies 
+	/// @param camera 
+	/// @param options 
+	/// @param distribution 
+	void CreateEnemy(Array<Enemy>& enemies, const Camera2D& camera, Array<int>& options, DiscreteDistribution& distribution)
 	{
 		Enemy enemy;
 		enemy.HP = 10;
-		enemy.speed = 10;
+		enemy.speed = 80;
 		enemy.height = 50;
 		enemy.width = 50;
-		enemy.pos = Vec2{ 30,30 };
+
+		// カメラのビューポートを取得する
+		const auto viewportRect = camera.getRegion();
+
+		double result = DiscreteSample(options, distribution);
+
+		int x = 0;
+		int y = 0;
+		if (result == 1)
+		{
+			//右
+			x = Random(viewportRect.x + WindowSizeWidth, viewportRect.x + WindowSizeWidth + 10);
+			y = Random(viewportRect.y, viewportRect.y + WindowSizeHeight);
+		}
+		else if (result == 2)
+		{
+			//左
+			x = Random(viewportRect.x + WindowSizeWidth, viewportRect.x + WindowSizeWidth + 10);
+			y = Random(viewportRect.y, viewportRect.y + WindowSizeHeight);
+		}
+		else if (result == 3)
+		{
+			//上
+			x = Random(viewportRect.x, viewportRect.x + WindowSizeWidth);
+			y = Random(viewportRect.y, viewportRect.y - 10);
+		}
+		else if (result == 4)
+		{
+			//下
+			x = Random(viewportRect.x, viewportRect.x + WindowSizeWidth);
+			y = Random(viewportRect.y + WindowSizeHeight, viewportRect.y + WindowSizeHeight + 10);
+		}
+
+		enemy.pos = Vec2{ x,y };
+
 		enemies.push_back(enemy);
 	}
-	// Fires the bullet towards the mouse position
-	void FireBullet(Vec2 playerPos, Vec2 mousePos, Array<Bullet>& bullets)
+	/// @brief 弾を生成する
+	/// @param playerPos 
+	/// @param mousePos 
+	/// @param bullets 
+	void FireCreateBullet(Vec2 playerPos, Vec2 mousePos, Array<Bullet>& bullets)
 	{
 		Bullet bullet;
 		bullet.pos = playerPos;
