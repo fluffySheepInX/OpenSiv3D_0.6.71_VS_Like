@@ -150,7 +150,6 @@ private:
 class Title : public App::Scene
 {
 public:
-
 	// コンストラクタ（必ず実装）
 	Title(const InitData& init)
 		: IScene{ init }
@@ -316,21 +315,20 @@ public:
 		: IScene{ init }
 	{
 		playerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
-		centerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		camera = Camera2D{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
-	}
-
-	// 更新関数（オプション）
-	void update() override
-	{
 		// 選択肢に対応する確率分布
-		DiscreteDistribution distribution(
+		distribution = DiscreteDistribution 
 		{
 			30,
 			30,
 			50,
 			50,
-		});
+		};
+	}
+
+	// 更新関数（オプション）
+	void update() override
+	{
 
 		camera.update();
 		const auto t = camera.createTransformer();
@@ -409,11 +407,11 @@ public:
 	{
 	}
 private:
+	DiscreteDistribution distribution;
 	// 蓄積された時間（秒）
 	double accumulator = 0.0;
 	// 出現間隔（秒）
 	double spawnTime = 1.0;
-	const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
 	// 絵文字からテクスチャを作成する | Create a texture from an emoji
 	const Texture texturePlayer{ U"🦖"_emoji };
 	const Texture textureEnemy{ U"🦖"_emoji };
@@ -425,7 +423,6 @@ private:
 	bool isPlayerFacingRight = true;
 	// プレイヤーの位置
 	Vec2 playerPos;
-	Vec2 centerPos;
 	Array<Bullet> bullets;
 	Array<Enemy> enemies;
 	Camera2D camera;
@@ -441,12 +438,6 @@ private:
 		{
 			bullet.pos += (bullet.direction * bullet.speed * deltaTime);
 		}
-
-		//// 画面外の弾を削除
-		//bullets.remove_if([playerPos](const Bullet& b)
-		//	{
-		//		return (not b.getCircle().intersects(Scene::Rect().setPos(playerPos.x, playerPos.y)));
-		//	});
 
 		// カメラのビューポートを取得する
 		const auto viewportRect = camera.getRegion();
@@ -504,7 +495,7 @@ private:
 		else if (result == 2)
 		{
 			//左
-			x = Random(viewportRect.x + WindowSizeWidth, viewportRect.x + WindowSizeWidth + 10);
+			x = Random(viewportRect.x -10, viewportRect.x);
 			y = Random(viewportRect.y, viewportRect.y + WindowSizeHeight);
 		}
 		else if (result == 3)
