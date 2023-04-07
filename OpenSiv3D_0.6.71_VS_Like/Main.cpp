@@ -58,38 +58,34 @@ struct Enemy
 
 	Vec2 pos;
 
-	RectF getRect()
+	/// @brief 自身の Circle を返す関数
+	/// @return Circle
+	Circle getCircle()
 	{
-		return RectF{ Arg::center(pos.x, pos.y), width, height };
+		return Circle{ pos.x, pos.y, width };
 	}
 };
-// 共有するデータ
+/// @brief 共有するデータ
 struct GameData
 {
 	Audio audio;
 };
-
+/// @brief シーンマネージャー
 using App = SceneManager<String, GameData>;
 
 // ウィンドウの幅
 const double WindowSizeWidth = 1200;
 // ウィンドウの高さ
 const double WindowSizeHeight = 800;
-// マップの幅
-int mapWidth = -1;
-// マップの高さ
-int mapHeight = -1;
 // プレイヤーのサイズ(幅)
 const int PlayerWidth = 50;
 // プレイヤーのサイズ(高さ)
 const int PlayerHeight = 50;
 const String PathImage = U"image001";
 const String PathMusic = U"music001";
-const String PathSound = U"sound001";
 
 double bgmValue = 5.0;
 Language language;
-
 
 // 言語選択シーン
 class SelectLang : public App::Scene
@@ -101,9 +97,6 @@ public:
 	{
 		language = Language::English;
 
-		// 画像を使用する為のTexture宣言
-		String lan = PathImage + U"/btnLanguage.png";
-		textureSiv3DKun = Texture{ lan, TextureDesc::Unmipped };
 		String text = U"English";
 		String text2 = U"日本語";
 		// font を使って text を pos の位置に描画したときのテキストの領域を取得
@@ -134,14 +127,12 @@ public:
 	// 描画関数（オプション）
 	void draw() const override
 	{
-		rectSiv3DKun(textureSiv3DKun).draw();
 		rect.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
 		rect2.draw(Arg::top = ColorF{ 0.5 }, Arg::bottom = ColorF{ 1.0 });
 		font(U"English").draw((WindowSizeWidth / 2) - (rectText.w / 2), 300, ColorF{ 0.25 });
 		font(U"日本語").draw((WindowSizeWidth / 2) - (rectText2.w / 2), 370, ColorF{ 0.25 });
 	}
 private:
-	Texture textureSiv3DKun;
 	const int width = 270;
 	const int height = 100;
 	const int centerHeight = (WindowSizeHeight / 2) - (height / 2);
@@ -315,6 +306,7 @@ private:
 	RectF rectText2;
 	RectF rect2;
 };
+// ゲーム本編シーン
 class PlayGame : public App::Scene
 {
 public:
@@ -323,8 +315,6 @@ public:
 	PlayGame(const InitData& init)
 		: IScene{ init }
 	{
-		mapWidth = textureMap.width();
-		mapHeight = textureMap.height();
 		playerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		centerPos = Vec2(WindowSizeWidth / 2, WindowSizeHeight / 2);
 		camera = Camera2D{ Vec2{ WindowSizeWidth / 2 - PlayerWidth / 2, WindowSizeHeight / 2 - PlayerHeight / 2}, 1.0 };
@@ -333,11 +323,6 @@ public:
 	// 更新関数（オプション）
 	void update() override
 	{
-		if (counter > 600)
-		{
-			counter = 0;
-		}
-		counter++;
 		// 選択肢に対応する確率分布
 		DiscreteDistribution distribution(
 		{
@@ -352,7 +337,7 @@ public:
 		const ScopedRenderStates2D sampler{ SamplerState::RepeatLinear };
 
 		// マップを描く | Draw the map
-		DrawMap(playerPos, textureMap, font);
+		DrawMap(textureMap);
 
 		// プレイヤーを描く | Draw the player
 		DrawPlayer(texturePlayer, isPlayerFacingRight, playerPos);
@@ -362,7 +347,9 @@ public:
 		// 弾情報を更新する
 		UpdateBullets(bullets, Scene::DeltaTime(), playerPos, camera);
 
-		if (counter % 10 == 0 || counter == 0)
+		accumulator += Scene::DeltaTime();
+		// 蓄積時間が出現間隔を超えたら
+		if (spawnTime <= accumulator)
 		{
 			// 敵情報を生成する
 			CreateEnemy(enemies, camera, options, distribution);
@@ -422,13 +409,14 @@ public:
 	{
 	}
 private:
-	DiscreteDistribution distribution;
-	int counter = -1;
+	// 蓄積された時間（秒）
+	double accumulator = 0.0;
+	// 出現間隔（秒）
+	double spawnTime = 1.0;
 	const Font font{ FontMethod::MSDF, 48, Typeface::Bold };
 	// 絵文字からテクスチャを作成する | Create a texture from an emoji
 	const Texture texturePlayer{ U"🦖"_emoji };
 	const Texture textureEnemy{ U"🦖"_emoji };
-	//texturePlayer.resized(PlayerWidth);
 	// マップ画像を使用する為のTexture宣言
 	const Texture textureMap{ PathImage + U"/map.png", TextureDesc::Mipped };
 	// プレイヤーの移動スピード | Player's movement speed
@@ -564,17 +552,8 @@ private:
 	/// @param playerPos 自機の位置
 	/// @param mapTexture マップ画像
 	/// @param font フォント
-	void DrawMap(Vec2 playerPos, Texture mapTexture, Font font)
+	void DrawMap(Texture mapTexture)
 	{
-		// 差分を計算する
-		double x = playerPos.x - WindowSizeWidth / 2;
-		double y = playerPos.y - WindowSizeHeight / 2;
-
-		// マップの左上の位置を計算する
-		Vec2 mapPos = Vec2(-x + (-(mapWidth / 2) + WindowSizeWidth / 2), -y + (-(mapHeight / 2) + WindowSizeHeight / 2));
-
-		//mapTexture(WindowSizeWidth / 2, WindowSizeHeight / 2, mapWidth, mapHeight).draw();
-		//mapTexture(WindowSizeWidth/2, WindowSizeHeight/2, mapWidth, mapHeight).draw();
 		mapTexture.repeated(256, 256).drawAt(0, 0);
 	}
 	/// @brief プレイヤーを描画します
@@ -607,7 +586,7 @@ private:
 		{
 			for (auto& enemy : enemies)
 			{
-				if (bullet.getCircle().intersects(enemy.getRect()))
+				if (bullet.getCircle().intersects(enemy.getCircle()))
 				{
 					enemy.HP -= bullet.damage;
 					bullet.isAlive = false;
@@ -634,12 +613,8 @@ private:
 // メイン関数 | Main function
 void Main()
 {
-	// ウィンドウのタイトル | Window title
-	Window::SetTitle(U"KyoryuFire-Ver0.1");
 	// ウィンドウのサイズ | Window size
 	Window::Resize(WindowSizeWidth, WindowSizeHeight);
-	//// フルスクリーンモードのデフォルトを有効にするか | Whether to enable fullscreen mode by default
-	//Window::SetFullscreen(true);
 	// 背景の色を設定する | Set the background color
 	Scene::SetBackground(ColorF{ 0.6, 0.8, 0.7 });
 	// ウィンドウを中心に移動
@@ -663,12 +638,14 @@ void Main()
 	manager.init(U"SelectLang");
 
 	// 音声ファイルへのパスを読み込み
-	String bgm = PathMusic + U"/PreparationBattle001.wav";
-	//String lan = U"";
+	// 今回は何も指定しない
+	String bgm = PathMusic + U"/";
 
 	// Audio を作成
+	// シーンを跨る場合でのAudio管理のサンプルとして実装
 	manager.get().get()->audio = Audio{ bgm ,Loop::Yes };
 	// 再生
+	// 今回は何も再生されない
 	manager.get().get()->audio.play();
 
 	while (System::Update())

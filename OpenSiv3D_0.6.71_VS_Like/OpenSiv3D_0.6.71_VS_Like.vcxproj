@@ -144,11 +144,7 @@
     <Image Include="App\example\texture\wood.jpg" />
     <Image Include="App\example\windmill.png" />
     <Image Include="App\icon.ico" />
-    <Image Include="App\image001\btnExit.png" />
-    <Image Include="App\image001\btnLanguage.png" />
-    <Image Include="App\image001\btnOption.png" />
-    <Image Include="App\image001\btnStart.png" />
-    <Image Include="App\image001\map.png" />
+    <Image Include="D:\001_プロジェクト\PJ_013_ゲーム作成\06_MagicAr\map.png" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="App\Resource.rc" />

@@ -221,19 +221,7 @@
     <Image Include="App\example\obj\siv3d-kun-eye.png">
       <Filter>Resource Files\example\obj</Filter>
     </Image>
-    <Image Include="App\image001\btnExit.png">
-      <Filter>Resource Files\image001</Filter>
-    </Image>
-    <Image Include="App\image001\btnLanguage.png">
-      <Filter>Resource Files\image001</Filter>
-    </Image>
-    <Image Include="App\image001\btnOption.png">
-      <Filter>Resource Files\image001</Filter>
-    </Image>
-    <Image Include="App\image001\btnStart.png">
-      <Filter>Resource Files\image001</Filter>
-    </Image>
-    <Image Include="App\image001\map.png">
+    <Image Include="D:\001_プロジェクト\PJ_013_ゲーム作成\06_MagicAr\map.png">
       <Filter>Resource Files\image001</Filter>
     </Image>
   </ItemGroup>
